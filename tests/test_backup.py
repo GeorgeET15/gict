@@ -1,10 +1,40 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from gict.backup import backup_directory
+from gict.backup import backup_device, backup_directory
+from gict.devices import DeviceAdapter, DeviceInfo, DeviceSession
+from gict.snapshots import write_report as write_snapshot_report
+
+
+class TestDeviceSession(DeviceSession):
+    def __init__(self, media_root: Path, close_error: Exception | None = None):
+        self._media_root = media_root
+        self._close_error = close_error
+        self.closed = False
+
+    @property
+    def media_root(self) -> Path:
+        return self._media_root
+
+    def close(self) -> None:
+        self.closed = True
+        if self._close_error is not None:
+            raise self._close_error
+
+
+class TestDeviceAdapter(DeviceAdapter):
+    def __init__(self, session: DeviceSession):
+        self._session = session
+
+    def discover(self) -> list[DeviceInfo]:
+        return []
+
+    def open(self, device: DeviceInfo) -> DeviceSession:
+        return self._session
 
 
 class BackupWorkflowTests(unittest.TestCase):
@@ -46,6 +76,193 @@ class BackupWorkflowTests(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 backup_directory(source, source / "backups")
+
+    def test_rejects_device_name_that_escapes_backup_root(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source"
+            source.mkdir()
+            backup_root = root / "backups"
+
+            for device_name in ("../escaped", str(root / "absolute")):
+                with self.subTest(device_name=device_name):
+                    with self.assertRaises(ValueError):
+                        backup_directory(source, backup_root, device_name)
+
+            self.assertFalse((root / "escaped").exists())
+            self.assertFalse((root / "absolute").exists())
+
+    def test_symlinks_are_reported_without_copying_link_targets(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source"
+            outside = root / "outside"
+            source.mkdir()
+            outside.mkdir()
+            outside_file = outside / "external.jpg"
+            outside_file.write_bytes(b"external file")
+            outside_directory = outside / "linked-directory"
+            outside_directory.mkdir()
+            (outside_directory / "hidden.jpg").write_bytes(b"hidden file")
+
+            try:
+                os.symlink(outside_file, source / "linked-file.jpg")
+                os.symlink(
+                    outside_directory,
+                    source / "linked-directory",
+                    target_is_directory=True,
+                )
+            except (NotImplementedError, OSError) as exc:
+                self.skipTest(f"symlinks are unavailable: {exc}")
+
+            result = backup_directory(source, root / "backups")
+
+            self.assertEqual(result["status"], "INCOMPLETE")
+            self.assertEqual(result["files_found"], 0)
+            self.assertEqual(result["files_copied"], 0)
+            self.assertTrue(any("symbolic link" in item["error"] for item in result["errors"]))
+            snapshot = Path(result["snapshot"])
+            self.assertFalse((snapshot / "photos" / "linked-file.jpg").exists())
+            self.assertFalse((snapshot / "photos" / "linked-directory" / "hidden.jpg").exists())
+            self.assertEqual(outside_file.read_bytes(), b"external file")
+
+    def test_empty_source_completes_with_zero_verified_files(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source"
+            source.mkdir()
+
+            result = backup_directory(source, root / "backups")
+
+            self.assertEqual(result["status"], "COMPLETE")
+            self.assertEqual(result["files_found"], 0)
+            self.assertEqual(result["files_verified"], 0)
+            snapshot = Path(result["snapshot"])
+            self.assertTrue((snapshot / "COMPLETE").is_file())
+            self.assertFalse((snapshot / "INCOMPLETE").exists())
+
+    def test_directory_traversal_error_marks_snapshot_incomplete(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source"
+            source.mkdir()
+
+            def fail_walk(path, *, onerror, followlinks):
+                onerror(PermissionError("simulated traversal failure"))
+                yield str(path), [], []
+
+            with patch("gict.backup.os.walk", side_effect=fail_walk):
+                result = backup_directory(source, root / "backups")
+
+            self.assertEqual(result["status"], "INCOMPLETE")
+            self.assertEqual(result["files_found"], 0)
+            self.assertEqual(result["errors"][0]["stage"], "scan")
+            snapshot = Path(result["snapshot"])
+            self.assertTrue((snapshot / "INCOMPLETE").is_file())
+            self.assertFalse((snapshot / "COMPLETE").exists())
+
+    def test_unexpected_copy_exception_writes_incomplete_report(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source"
+            source.mkdir()
+            (source / "photo.jpg").write_bytes(b"photo")
+
+            with patch(
+                "gict.backup.organized_destination",
+                side_effect=RuntimeError("simulated unexpected failure"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "simulated unexpected"):
+                    backup_directory(source, root / "backups")
+
+            snapshot = next((root / "backups" / "Local test source").iterdir())
+            self.assertTrue((snapshot / "INCOMPLETE").is_file())
+            self.assertFalse((snapshot / "COMPLETE").exists())
+            report = json.loads(
+                (snapshot / "report.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(report["status"], "INCOMPLETE")
+            self.assertEqual(report["errors"][-1]["stage"], "backup")
+
+    def test_complete_report_failure_records_incomplete_status(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source"
+            source.mkdir()
+            (source / "photo.jpg").write_bytes(b"photo")
+
+            def fail_complete_report(snapshot, report, *, complete):
+                if complete:
+                    raise OSError("simulated report write failure")
+                return write_snapshot_report(snapshot, report, complete=False)
+
+            with patch(
+                "gict.backup.write_report",
+                side_effect=fail_complete_report,
+            ):
+                with self.assertRaisesRegex(OSError, "report write failure"):
+                    backup_directory(source, root / "backups")
+
+            snapshot = next((root / "backups" / "Local test source").iterdir())
+            self.assertTrue((snapshot / "INCOMPLETE").is_file())
+            self.assertFalse((snapshot / "COMPLETE").exists())
+            report = json.loads(
+                (snapshot / "report.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(report["status"], "INCOMPLETE")
+            self.assertEqual(report["errors"][-1]["stage"], "backup")
+
+    def test_device_cleanup_failure_downgrades_completed_snapshot(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source"
+            source.mkdir()
+            (source / "photo.jpg").write_bytes(b"photo")
+            session = TestDeviceSession(
+                source,
+                RuntimeError("simulated unmount failure"),
+            )
+            device = DeviceInfo("device-id", "Test Phone", "linux")
+
+            result = backup_device(
+                TestDeviceAdapter(session),
+                device,
+                root / "backups",
+            )
+
+            self.assertTrue(session.closed)
+            self.assertEqual(result["status"], "INCOMPLETE")
+            self.assertEqual(result["errors"][-1]["stage"], "cleanup")
+            snapshot = Path(result["snapshot"])
+            self.assertTrue((snapshot / "INCOMPLETE").exists())
+            self.assertFalse((snapshot / "COMPLETE").exists())
+            report = json.loads(
+                (snapshot / "report.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(report["status"], "INCOMPLETE")
+            self.assertEqual(report["errors"][-1]["stage"], "cleanup")
+
+    def test_device_display_name_is_preserved_but_sanitized_for_path(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source"
+            source.mkdir()
+            (source / "photo.jpg").write_bytes(b"photo")
+            session = TestDeviceSession(source)
+            device = DeviceInfo("device-id", "Phone/One", "linux")
+
+            result = backup_device(
+                TestDeviceAdapter(session),
+                device,
+                root / "backups",
+            )
+
+            self.assertEqual(result["status"], "COMPLETE")
+            self.assertEqual(result["device_name"], "Phone/One")
+            self.assertEqual(
+                Path(result["snapshot"]).parent,
+                root / "backups" / "Phone_One",
+            )
 
     def test_copy_failure_marks_snapshot_incomplete(self):
         with tempfile.TemporaryDirectory() as temp:

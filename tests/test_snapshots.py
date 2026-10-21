@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from gict.snapshots import create_snapshot, write_report
 
@@ -53,6 +54,40 @@ class SnapshotTests(unittest.TestCase):
             self.assertEqual(report["status"], "COMPLETE")
             self.assertTrue((snapshot / "COMPLETE").exists())
             self.assertFalse((snapshot / "INCOMPLETE").exists())
+
+    def test_failed_report_write_leaves_only_incomplete_marker(self):
+        with tempfile.TemporaryDirectory() as temp:
+            snapshot, _ = create_snapshot(Path(temp) / "device")
+            report_path = write_report(
+                snapshot,
+                {"files_found": 1, "files_copied": 1},
+                complete=True,
+            )
+            previous_report = report_path.read_bytes()
+            original_open = Path.open
+
+            def fail_temporary_report_open(path, *args, **kwargs):
+                if path.name == "report.json.gict-writing":
+                    raise OSError("simulated report write failure")
+                return original_open(path, *args, **kwargs)
+
+            with patch.object(
+                Path,
+                "open",
+                autospec=True,
+                side_effect=fail_temporary_report_open,
+            ):
+                with self.assertRaisesRegex(OSError, "report write failure"):
+                    write_report(
+                        snapshot,
+                        {"files_found": 2, "files_copied": 1},
+                        complete=False,
+                    )
+
+            self.assertFalse((snapshot / "COMPLETE").exists())
+            self.assertTrue((snapshot / "INCOMPLETE").exists())
+            self.assertEqual(report_path.read_bytes(), previous_report)
+            self.assertFalse((snapshot / "report.json.gict-writing").exists())
 
 
 if __name__ == "__main__":

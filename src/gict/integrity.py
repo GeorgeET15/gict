@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import tempfile
 import time
 from pathlib import Path
 from typing import Iterable
@@ -36,12 +37,10 @@ def copy_verified(
     The destination is replaced only after verification succeeds.
     Returns the verified SHA-256 digest.
 
-    A failed attempt may leave the temporary file for inspection.
+    Temporary attempt files are removed after failed or interrupted attempts.
     """
     source = Path(source)
     destination = Path(destination)
-    temporary = destination.with_name(destination.name + ".gict-copying")
-
     if retries < 1:
         raise ValueError("retries must be at least 1")
 
@@ -49,18 +48,24 @@ def copy_verified(
     last_error = None
 
     for attempt in range(retries):
+        temporary: Path | None = None
         try:
-            temporary.unlink(missing_ok=True)
+            descriptor, temporary_name = tempfile.mkstemp(
+                prefix=".gict-copying-",
+                dir=destination.parent,
+            )
+            temporary = Path(temporary_name)
 
             source_digest = hashlib.sha256()
 
-            with source.open("rb") as source_file, temporary.open("wb") as target:
-                while True:
-                    chunk = source_file.read(CHUNK_SIZE)
-                    if not chunk:
-                        break
-                    source_digest.update(chunk)
-                    target.write(chunk)
+            with os.fdopen(descriptor, "wb") as target:
+                with source.open("rb") as source_file:
+                    while True:
+                        chunk = source_file.read(CHUNK_SIZE)
+                        if not chunk:
+                            break
+                        source_digest.update(chunk)
+                        target.write(chunk)
 
                 target.flush()
                 os.fsync(target.fileno())
@@ -83,8 +88,15 @@ def copy_verified(
 
         except OSError as exc:
             last_error = exc
-            if attempt + 1 < retries:
-                time.sleep(0.5)
+        finally:
+            if temporary is not None:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+        if last_error is not None and attempt + 1 < retries:
+            time.sleep(0.5)
 
     assert last_error is not None
     raise last_error

@@ -54,6 +54,12 @@ def write_report(
 
     report_path = snapshot / "report.json"
     temporary_report = snapshot / "report.json.gict-writing"
+    incomplete_marker = snapshot / "INCOMPLETE"
+    complete_marker = snapshot / "COMPLETE"
+
+    if not incomplete_marker.exists():
+        incomplete_marker.write_text("INCOMPLETE\n", encoding="utf-8")
+    complete_marker.unlink(missing_ok=True)
 
     try:
         with temporary_report.open("w", encoding="utf-8") as stream:
@@ -65,22 +71,17 @@ def write_report(
     finally:
         # A failed report write must not leave a misleading COMPLETE marker.
         if not complete:
-            (snapshot / "COMPLETE").unlink(missing_ok=True)
+            complete_marker.unlink(missing_ok=True)
 
         temporary_report.unlink(missing_ok=True)
 
     if complete:
-        incomplete_marker = snapshot / "INCOMPLETE"
-        complete_marker = snapshot / "COMPLETE"
-
         if incomplete_marker.exists():
             # Rename the marker rather than briefly claiming both statuses.
             incomplete_marker.replace(complete_marker)
         else:
             complete_marker.write_text("COMPLETE\n", encoding="utf-8")
     else:
-        (snapshot / "INCOMPLETE").write_text(
-            "INCOMPLETE\n", encoding="utf-8"
-        )
+        incomplete_marker.write_text("INCOMPLETE\n", encoding="utf-8")
 
     return report_path
