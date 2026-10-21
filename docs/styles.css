@@ -405,6 +405,7 @@ code {
   border: 1px solid var(--border-light);
   border-radius: var(--radius);
   padding: 1.5rem;
+  overflow: hidden;
 }
 
 .qs-card h3 {
