@@ -5,6 +5,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
+from gict import __version__
 from gict.cli import main
 from gict.devices import DeviceInfo
 
@@ -45,7 +46,7 @@ class CliTests(unittest.TestCase):
                 main(["--version"])
 
         self.assertEqual(raised.exception.code, 0)
-        self.assertIn("gict-dev", stdout.getvalue())
+        self.assertIn(f"gict {__version__}", stdout.getvalue())
 
     def test_rejects_device_name_path_traversal(self):
         stderr = io.StringIO()
@@ -123,17 +124,6 @@ class CliTests(unittest.TestCase):
         self.assertEqual(stdout, "id-1\tPhone One\n")
         self.assertEqual(stderr, "")
         adapter_type.return_value.open.assert_not_called()
-
-    def test_lists_devices_with_macos_adapter_on_darwin(self):
-        devices = [DeviceInfo("mac-id", "Mac Phone", "macos")]
-        with patch("sys.platform", "darwin"):
-            with patch("gict.devices.macos.MacOSDeviceAdapter") as adapter_type:
-                adapter_type.return_value.discover.return_value = devices
-                exit_code, stdout, stderr = self.run_cli(["--list-devices"])
-
-        self.assertEqual(exit_code, 0)
-        self.assertEqual(stdout, "mac-id\tMac Phone\n")
-        self.assertEqual(stderr, "")
 
     def test_device_backup_uses_only_explicitly_requested_identifier(self):
         devices = [

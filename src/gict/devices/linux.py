@@ -235,12 +235,8 @@ class LinuxDeviceAdapter(DeviceAdapter):
 
     def open(self, device: DeviceInfo) -> DeviceSession:
         if device.platform != self.platform:
-            platform_name = {
-                "linux": "Linux",
-                "macos": "macOS",
-            }.get(self.platform, self.platform)
             raise ValueError(
-                f"{type(self).__name__} can only open {platform_name} devices"
+                f"{type(self).__name__} can only open Linux devices"
             )
 
         executables = self._executables()

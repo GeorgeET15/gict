@@ -29,12 +29,8 @@ def _device_adapter():
         from gict.devices.linux import LinuxDeviceAdapter
 
         return LinuxDeviceAdapter()
-    if sys.platform == "darwin":
-        from gict.devices.macos import MacOSDeviceAdapter
-
-        return MacOSDeviceAdapter()
     raise RuntimeError(
-        "iPhone device access is currently implemented only for Linux and macOS."
+        "iPhone device access is currently implemented only for Linux."
     )
 
 
@@ -56,8 +52,8 @@ def _print_backup_result(result: dict) -> int:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="gict-dev",
-        description="Copy and verify local files or media from a Linux/macOS iPhone.",
+        prog="gict",
+        description="Copy and verify local files or media from a Linux iPhone.",
     )
     parser.add_argument(
         "--version",
@@ -71,12 +67,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--device-id",
-        help="explicit connected iPhone identifier to back up (Linux/macOS only)",
+        help="explicit connected iPhone identifier to back up (Linux only)",
     )
     parser.add_argument(
         "--list-devices",
         action="store_true",
-        help="list connected iPhones without starting a backup (Linux/macOS only)",
+        help="list connected iPhones without starting a backup (Linux only)",
     )
     parser.add_argument(
         "--backup-root",
