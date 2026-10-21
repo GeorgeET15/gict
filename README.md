@@ -1,21 +1,25 @@
 # GICT - George's iPhone Copy Tool
 
-A simple Linux CLI tool for backing up iPhone photos and videos.
+A simple Linux tool for backing up iPhone photos and videos, with an
+interactive terminal interface.
 
 GICT copies your media into timestamped snapshots, verifies every copied file using SHA-256, and generates a report for each backup.
 
 ## Features
 
+- Interactive terminal interface, launched by running `gict`
 - Verified file copying
 - Organized photos and videos
 - Timestamped backups
 - Reports for successful and incomplete backups
 - Safe, read-only iPhone access
+- Non-interactive flags for scripting and automation
 
 ## Requirements
 
 - Linux
 - Python 3.10+
+- [`textual`](https://textual.textualize.io/) (installed automatically as a dependency)
 - For iPhone backups: `ifuse` 1.2.1, `idevice_id`, `ideviceinfo`, `mountpoint`, and `fusermount3` or `fusermount`
 
 Local-directory backups don't require an iPhone or the device-access tools.
@@ -35,6 +39,33 @@ gict --version
 ```
 
 ## Usage
+
+### Interactive mode
+
+Running `gict` with no arguments launches the interactive terminal interface:
+
+```bash
+gict
+```
+
+From the home screen you can:
+
+- Back up an iPhone (discovers connected devices, lets you pick one, choose a
+  destination, and confirm before anything is mounted or copied)
+- Back up a local directory (prompts for a source, destination, and display
+  name)
+- View previous backups (reads existing `report.json`/status-marker files
+  under `~/GICT_Backups`, read-only)
+- View information about GICT
+
+Navigate with the arrow keys and Enter; press Escape or use the on-screen
+Back button to go back a screen. Nothing is mounted, copied, or overwritten
+until you explicitly confirm on the confirmation screen.
+
+### Non-interactive mode (scripting)
+
+Passing any flag skips the interactive interface and runs the original
+flag-driven behavior, unchanged, for use in scripts and automation:
 
 **Back up a connected iPhone**
 
@@ -62,18 +93,27 @@ gict --source ./photos --backup-root ~/GICT_Backups
 
 ## Backup output
 
-Each run creates a timestamped snapshot containing your media, a `report.json`, and a status marker.
+Each run creates a timestamped snapshot containing your media, a `report.json`, and a status marker. Photos and videos are grouped by their original modification date; the original folder they came from (for example an iPhone's `100APPLE`/`101APPLE` DCIM folders) is not preserved, only the filename.
 
 ```text
 GICT_Backups/
 └── iPhone/
     └── 2026-10-21_103000/
         ├── photos/
+        │   └── 2026/
+        │       └── 10/
+        │           └── IMG_1234.HEIC
         ├── videos/
+        │   └── 2026/
+        │       └── 10/
+        │           └── IMG_5678.MOV
         ├── other/
+        │   └── metadata.dat
         ├── report.json
         └── COMPLETE
 ```
+
+If two different source folders contain files with the same name (common with iPhone DCIM folders after the camera roll resets its numbering), the second one is kept under a renamed filename, such as `IMG_1234_1.HEIC`, rather than overwriting the first.
 
 Every copied file is SHA-256 verified. If a backup fails or is interrupted, its snapshot is marked `INCOMPLETE` when a snapshot has been created.
 

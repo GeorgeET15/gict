@@ -17,21 +17,22 @@ VIDEO_EXTENSIONS = {
 
 def organized_destination(
     source_file: Path,
-    source_root: Path,
     destination_root: Path,
 ) -> Path:
     """
     Build a destination path using source modification time.
 
-    Photos: destination_root/photos/YYYY/MM/relative-path
-    Videos: destination_root/videos/YYYY/MM/relative-path
-    Other:  destination_root/other/relative-path
+    Photos: destination_root/photos/YYYY/MM/filename
+    Videos: destination_root/videos/YYYY/MM/filename
+    Other:  destination_root/other/filename
+
+    The original directory structure is not preserved; only the filename is
+    kept, so the caller is responsible for resolving filename collisions
+    between files that originated in different source subdirectories.
     """
     source_file = Path(source_file)
-    source_root = Path(source_root)
     destination_root = Path(destination_root)
 
-    relative_path = source_file.relative_to(source_root)
     extension = source_file.suffix.lower()
 
     try:
@@ -52,4 +53,4 @@ def organized_destination(
         category = "other"
         grouping = Path()
 
-    return destination_root / category / grouping / relative_path
+    return destination_root / category / grouping / source_file.name

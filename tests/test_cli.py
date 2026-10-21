@@ -18,6 +18,25 @@ class CliTests(unittest.TestCase):
             exit_code = main(arguments)
         return exit_code, stdout.getvalue(), stderr.getvalue()
 
+    def test_bare_invocation_launches_interactive_app(self):
+        with patch("sys.argv", ["gict"]):
+            with patch("gict.tui.run", return_value=0) as run_tui:
+                exit_code = main(None)
+
+        run_tui.assert_called_once_with()
+        self.assertEqual(exit_code, 0)
+
+    def test_explicit_empty_argv_still_uses_argparse_error(self):
+        stderr = io.StringIO()
+        with patch("gict.tui.run") as run_tui:
+            with redirect_stderr(stderr):
+                with self.assertRaises(SystemExit) as raised:
+                    main([])
+
+        run_tui.assert_not_called()
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("--source", stderr.getvalue())
+
     def test_requires_source_and_backup_root(self):
         stderr = io.StringIO()
         with redirect_stderr(stderr):

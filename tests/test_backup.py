@@ -126,6 +126,29 @@ class BackupWorkflowTests(unittest.TestCase):
             self.assertFalse((snapshot / "photos" / "linked-directory" / "hidden.jpg").exists())
             self.assertEqual(outside_file.read_bytes(), b"external file")
 
+    def test_filename_collision_across_subfolders_is_renamed_not_overwritten(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source"
+            (source / "100APPLE").mkdir(parents=True)
+            (source / "101APPLE").mkdir(parents=True)
+            (source / "100APPLE" / "IMG_0001.JPG").write_bytes(b"first")
+            (source / "101APPLE" / "IMG_0001.JPG").write_bytes(b"second")
+
+            result = backup_directory(source, root / "backups")
+
+            self.assertEqual(result["status"], "COMPLETE")
+            self.assertEqual(result["files_found"], 2)
+            self.assertEqual(result["files_copied"], 2)
+
+            snapshot = Path(result["snapshot"])
+            copied_files = sorted((snapshot / "photos").rglob("IMG_0001*.JPG"))
+            self.assertEqual(len(copied_files), 2)
+            self.assertEqual(copied_files[0].name, "IMG_0001.JPG")
+            self.assertEqual(copied_files[1].name, "IMG_0001_1.JPG")
+            self.assertEqual(copied_files[0].read_bytes(), b"first")
+            self.assertEqual(copied_files[1].read_bytes(), b"second")
+
     def test_empty_source_completes_with_zero_verified_files(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

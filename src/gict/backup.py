@@ -3,6 +3,8 @@
 import os
 import re
 import stat
+import threading
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path, PureWindowsPath
 
@@ -51,6 +53,8 @@ def backup_directory(
     device_name: str = "Local test source",
     *,
     device_folder_name: str | None = None,
+    on_progress: Callable[[dict], None] | None = None,
+    cancel_event: threading.Event | None = None,
 ) -> dict:
     """Back up a local directory into a new timestamped snapshot."""
     source = Path(source).resolve()
@@ -78,9 +82,12 @@ def backup_directory(
         raise ValueError("Device directory must remain inside the backup root.")
 
     files, scan_errors = list_files(source)
+    if on_progress is not None:
+        on_progress({"stage": "scanned", "files_found": len(files)})
     snapshot, started_at = create_snapshot(device_root)
 
     copied = 0
+    used_destinations: set[Path] = set()
     errors = [
         {"stage": "scan", "error": error}
         for error in scan_errors
@@ -122,16 +129,32 @@ def backup_directory(
 
     try:
         for src in files:
-            destination = organized_destination(src, source, snapshot)
+            if cancel_event is not None and cancel_event.is_set():
+                raise KeyboardInterrupt
+
+            destination = organized_destination(src, snapshot)
+            destination = _deduplicate_destination(destination, used_destinations)
+            used_destinations.add(destination)
+            error_message = None
             try:
                 copy_verified(src, destination)
                 copied += 1
             except OSError as exc:
+                error_message = str(exc)
                 errors.append({
                     "stage": "copy",
                     "source": str(src.relative_to(source)),
                     "destination": str(destination),
-                    "error": str(exc),
+                    "error": error_message,
+                })
+
+            if on_progress is not None:
+                on_progress({
+                    "stage": "copy",
+                    "files_found": len(files),
+                    "files_copied": copied,
+                    "current_file": str(src.relative_to(source)),
+                    "error": error_message,
                 })
 
         complete = not errors and copied == len(files)
@@ -158,6 +181,9 @@ def backup_device(
     adapter: DeviceAdapter,
     device: DeviceInfo,
     backup_root: Path,
+    *,
+    on_progress: Callable[[dict], None] | None = None,
+    cancel_event: threading.Event | None = None,
 ) -> dict:
     """Back up a device session and include cleanup failures in its status."""
     result: dict | None = None
@@ -169,6 +195,8 @@ def backup_device(
                 backup_root,
                 device_name=device.name,
                 device_folder_name=_safe_device_folder_name(device.name),
+                on_progress=on_progress,
+                cancel_event=cancel_event,
             )
     except KeyboardInterrupt:
         if result is not None:
@@ -204,6 +232,21 @@ def _record_cleanup_failure(result: dict, error: str) -> dict:
     )
     updated["report_path"] = str(report_path)
     return updated
+
+
+def _deduplicate_destination(destination: Path, used: set[Path]) -> Path:
+    """Append a numeric suffix if this destination is already taken this run."""
+    if destination not in used:
+        return destination
+
+    suffix = 1
+    while True:
+        candidate = destination.with_name(
+            f"{destination.stem}_{suffix}{destination.suffix}"
+        )
+        if candidate not in used:
+            return candidate
+        suffix += 1
 
 
 def _safe_device_folder_name(device_name: str) -> str:

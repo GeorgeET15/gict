@@ -51,6 +51,11 @@ def _print_backup_result(result: dict) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    if argv is None and len(sys.argv) <= 1:
+        from gict.tui import run as run_tui
+
+        return run_tui()
+
     parser = argparse.ArgumentParser(
         prog="gict",
         description="Copy and verify local files or media from a Linux iPhone.",

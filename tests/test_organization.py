@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from datetime import datetime
@@ -15,28 +16,25 @@ class OrganizationTests(unittest.TestCase):
             source_root.mkdir()
 
             cases = [
-                ("100APPLE/IMG_1234.HEIC", "photos"),
-                ("101APPLE/IMG_1235.MOV", "videos"),
+                ("100APPLE/IMG_1234.HEIC", "photos", "IMG_1234.HEIC"),
+                ("101APPLE/IMG_1235.MOV", "videos", "IMG_1235.MOV"),
             ]
 
-            for relative, category in cases:
+            for relative, category, filename in cases:
                 source = source_root / relative
                 source.parent.mkdir(parents=True, exist_ok=True)
                 source.write_bytes(b"test")
                 timestamp = datetime(2024, 3, 15, 12, 0).timestamp()
-                import os
                 os.utime(source, (timestamp, timestamp))
 
-                result = organized_destination(
-                    source, source_root, destination_root
-                )
+                result = organized_destination(source, destination_root)
 
                 self.assertEqual(
                     result,
-                    destination_root / category / "2024" / "03" / relative,
+                    destination_root / category / "2024" / "03" / filename,
                 )
 
-    def test_preserves_relative_path_for_other_files(self):
+    def test_flattens_other_files_to_just_the_filename(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             source_root = root / "DCIM"
@@ -45,13 +43,11 @@ class OrganizationTests(unittest.TestCase):
             source.parent.mkdir()
             source.write_bytes(b"metadata")
 
-            result = organized_destination(
-                source, source_root, root / "snapshot"
-            )
+            result = organized_destination(source, root / "snapshot")
 
             self.assertEqual(
                 result,
-                root / "snapshot" / "other" / "nested" / "metadata.dat",
+                root / "snapshot" / "other" / "metadata.dat",
             )
 
 
