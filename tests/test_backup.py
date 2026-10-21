@@ -244,7 +244,7 @@ class BackupWorkflowTests(unittest.TestCase):
 
     def test_device_display_name_is_preserved_but_sanitized_for_path(self):
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
+            root = Path(temp).resolve()
             source = root / "source"
             source.mkdir()
             (source / "photo.jpg").write_bytes(b"photo")
