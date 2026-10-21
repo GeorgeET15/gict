@@ -2,6 +2,29 @@
 
 All notable changes to GICT are documented in this file.
 
+## Unreleased
+
+Added a System Setup screen to the TUI, reachable from the home screen, for
+checking iPhone-access requirements.
+
+- Checks Linux OS, Python version, `ifuse` (exact version 1.2.1, reusing the
+  existing `LinuxDeviceAdapter._verify_ifuse` check with no duplicated
+  version logic), `idevice_id`, `ideviceinfo`, `mountpoint`, and
+  `fusermount3`/`fusermount` individually, each reported as available,
+  missing, incompatible, or unable to determine.
+- Detects the Linux distribution from `/etc/os-release` (Debian/Ubuntu,
+  Fedora, Arch, or unknown) and shows an example install command, with an
+  explicit note that package names/versions vary and that installing the
+  distribution's package does not guarantee the exact `ifuse` 1.2.1 version
+  GICT requires.
+- Never runs an installation command itself; only displays it, with a
+  best-effort "Copy command" action and a "Recheck" action.
+- The home screen's status line now reuses the same check, replacing the
+  previous first-failure-only message.
+- Local-directory backup mode remains fully usable when none of these
+  dependencies are present.
+- New module: `src/gict/setup_check.py` (no new dependency).
+
 ## 1.1.0
 
 Added an interactive terminal interface (Textual). Running `gict` with no

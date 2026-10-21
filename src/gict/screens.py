@@ -15,8 +15,24 @@ from textual.widgets.option_list import Option
 from gict import __version__
 from gict.backup import backup_device, backup_directory
 from gict.cli import _device_adapter
+from gict.setup_check import (
+    DependencyCheck,
+    all_install_commands,
+    check_iphone_dependencies,
+    detect_distro,
+    distro_label,
+    install_command_for,
+    overall_status,
+)
 
 DEFAULT_BACKUP_ROOT = Path.home() / "GICT_Backups"
+
+_STATUS_MARKERS = {
+    "available": "OK",
+    "missing": "MISSING",
+    "incompatible": "INCOMPATIBLE",
+    "unknown": "UNKNOWN",
+}
 
 
 class HomeScreen(Screen):
@@ -27,16 +43,12 @@ class HomeScreen(Screen):
         yield Header()
         yield Vertical(
             Static(f"Backup directory: {DEFAULT_BACKUP_ROOT}", id="backup-root-info"),
-            Static(
-                "iPhone device access: checking..."
-                if iphone_supported
-                else "iPhone device access: unavailable (Linux only)",
-                id="device-status",
-            ),
+            Static("iPhone device access: checking...", id="device-status"),
             OptionList(
                 Option("Back up an iPhone", id="backup-iphone", disabled=not iphone_supported),
                 Option("Back up a local directory", id="backup-local"),
                 Option("View previous backups", id="view-backups"),
+                Option("System Setup", id="system-setup"),
                 Option("About GICT", id="about"),
                 Option("Quit", id="quit"),
                 id="home-menu",
@@ -46,19 +58,15 @@ class HomeScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
-        if sys.platform == "linux":
-            self.run_worker(self._check_device_status, thread=True)
+        self.run_worker(self._check_device_status, thread=True)
 
     def _check_device_status(self) -> None:
-        try:
-            adapter = _device_adapter()
-            adapter._executables()
-        except RuntimeError as exc:
-            self.app.call_from_thread(
-                self._set_device_status, f"iPhone device access: not ready ({exc})"
-            )
-            return
-        self.app.call_from_thread(self._set_device_status, "iPhone device access: ready")
+        checks = check_iphone_dependencies()
+        if overall_status(checks) == "Ready for iPhone backups":
+            text = "iPhone device access: ready"
+        else:
+            text = "iPhone setup incomplete - see System Setup"
+        self.app.call_from_thread(self._set_device_status, text)
 
     def _set_device_status(self, text: str) -> None:
         self.query_one("#device-status", Static).update(text)
@@ -71,6 +79,8 @@ class HomeScreen(Screen):
             self.app.push_screen(LocalBackupFormScreen())
         elif option_id == "view-backups":
             self.app.push_screen(PreviousBackupsScreen())
+        elif option_id == "system-setup":
+            self.app.push_screen(SetupScreen())
         elif option_id == "about":
             self.app.push_screen(AboutScreen())
         elif option_id == "quit":
@@ -541,6 +551,141 @@ class PreviousBackupsScreen(Screen):
         if (snapshot_dir / "INCOMPLETE").exists():
             return f"{device_name} | {timestamp} | INCOMPLETE (no report.json found)"
         return f"{device_name} | {timestamp} | status unknown (no report or marker found)"
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "back":
+            self.app.pop_screen()
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
+
+
+class SetupScreen(Screen):
+    """Checks iPhone-access dependencies individually and guides setup."""
+
+    BINDINGS = [("escape", "go_back", "Back")]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._checks: list[DependencyCheck] = []
+        self._install_command: str | None = None
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Vertical(
+            Static("Checking iPhone device access requirements...", id="setup-overall"),
+            Static("", id="setup-checks"),
+            Static(
+                "Local-directory backups do not need any of this.",
+                id="setup-local-note",
+            ),
+            Static("", id="setup-install"),
+            Horizontal(
+                Button("Copy command", id="copy-command", disabled=True),
+                Button("View detailed instructions", id="view-details"),
+                Button("Recheck", id="recheck"),
+                Button("Back", id="back"),
+            ),
+            id="setup-body",
+        )
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self._recheck()
+
+    def _recheck(self) -> None:
+        self.query_one("#setup-overall", Static).update("Checking...")
+        self.query_one("#copy-command", Button).disabled = True
+        self.run_worker(self._check_worker, thread=True)
+
+    def _check_worker(self) -> None:
+        checks = check_iphone_dependencies()
+        self.app.call_from_thread(self._show_results, checks)
+
+    def _show_results(self, checks: list[DependencyCheck]) -> None:
+        self._checks = checks
+        status = overall_status(checks)
+        self.query_one("#setup-overall", Static).update(f"Status: {status}")
+
+        lines = [
+            f"{_STATUS_MARKERS.get(check.status, '?')} - {check.name}: {check.detail}"
+            for check in checks
+        ]
+        self.query_one("#setup-checks", Static).update("\n".join(lines))
+
+        if status == "Ready for iPhone backups":
+            self._install_command = None
+            self.query_one("#setup-install", Static).update("")
+            self.query_one("#copy-command", Button).disabled = True
+            return
+
+        distro = detect_distro()
+        command = install_command_for(distro)
+        if command is not None:
+            self._install_command = command
+            self.query_one("#setup-install", Static).update(
+                f"Detected distribution: {distro_label(distro)}\n"
+                f"Example command: {command}\n\n"
+                "This is a starting example, not a guaranteed package name "
+                "or version; names and availability vary by distribution "
+                "and release. GICT requires ifuse exactly version 1.2.1 - "
+                "installing this package does not guarantee that exact "
+                "version. Use Recheck after installing to confirm."
+            )
+            self.query_one("#copy-command", Button).disabled = False
+        else:
+            self._install_command = None
+            self.query_one("#setup-install", Static).update(
+                "Could not automatically identify your Linux distribution. "
+                "See 'View detailed instructions' for example commands, or "
+                "consult your distribution's documentation for installing "
+                "ifuse, libimobiledevice, and FUSE."
+            )
+            self.query_one("#copy-command", Button).disabled = True
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "back":
+            self.app.pop_screen()
+        elif event.button.id == "recheck":
+            self._recheck()
+        elif event.button.id == "view-details":
+            self.app.push_screen(DetailedInstructionsScreen())
+        elif event.button.id == "copy-command" and self._install_command:
+            try:
+                self.app.copy_to_clipboard(self._install_command)
+                self.notify("Command copied to clipboard.")
+            except Exception:
+                self.notify("Could not copy automatically; select the text above to copy.")
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
+
+
+class DetailedInstructionsScreen(Screen):
+    """Example install commands for every distribution GICT recognizes."""
+
+    BINDINGS = [("escape", "go_back", "Back")]
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        sections = [
+            f"{label}:\n  {command}" for label, command in all_install_commands().items()
+        ]
+        text = (
+            "\n\n".join(sections)
+            + "\n\n"
+            "These are starting examples, not guaranteed package names - "
+            "names and available versions vary by distribution and "
+            "release.\n\n"
+            "GICT requires ifuse exactly version 1.2.1. Installing your "
+            "distribution's package does not guarantee that exact version; "
+            "use Recheck on the System Setup screen after installing to "
+            "confirm. If the version does not match, you may need to build "
+            "ifuse 1.2.1 from source instead."
+        )
+        yield VerticalScroll(Static(text, id="detailed-instructions-text"))
+        yield Button("Back", id="back")
+        yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "back":

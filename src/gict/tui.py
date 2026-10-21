@@ -15,7 +15,7 @@ class GictApp(App):
     }
 
     #home-body, #discovery-body, #form-body, #confirm-body, #progress-body,
-    #results-body {
+    #results-body, #setup-body {
         width: 90%;
         max-width: 110;
         height: auto;

@@ -8,6 +8,8 @@ GICT copies your media into timestamped snapshots, verifies every copied file us
 ## Features
 
 - Interactive terminal interface, launched by running `gict`
+- A built-in System Setup screen that checks iPhone-access requirements
+  individually and shows guided install commands
 - Verified file copying
 - Organized photos and videos
 - Timestamped backups
@@ -20,9 +22,11 @@ GICT copies your media into timestamped snapshots, verifies every copied file us
 - Linux
 - Python 3.10+
 - [`textual`](https://textual.textualize.io/) (installed automatically as a dependency)
-- For iPhone backups: `ifuse` 1.2.1, `idevice_id`, `ideviceinfo`, `mountpoint`, and `fusermount3` or `fusermount`
+- For iPhone backups: `ifuse` exactly version 1.2.1, `idevice_id`, `ideviceinfo`, `mountpoint`, and `fusermount3` or `fusermount`
 
 Local-directory backups don't require an iPhone or the device-access tools.
+GICT never installs anything itself; it only checks what's already on your
+system and shows you the commands to run yourself.
 
 ## Installation
 
@@ -56,11 +60,26 @@ From the home screen you can:
   name)
 - View previous backups (reads existing `report.json`/status-marker files
   under `~/GICT_Backups`, read-only)
+- System Setup (checks whether `ifuse`, `idevice_id`, `ideviceinfo`,
+  `mountpoint`, and `fusermount3`/`fusermount` are installed and compatible,
+  one by one, and shows an example install command for your detected Linux
+  distribution)
 - View information about GICT
 
 Navigate with the arrow keys and Enter; press Escape or use the on-screen
 Back button to go back a screen. Nothing is mounted, copied, or overwritten
 until you explicitly confirm on the confirmation screen.
+
+### Setting up iPhone access
+
+Open **System Setup** from the home screen at any time to see exactly which
+iPhone-access requirement is missing or incompatible, with an example
+install command for Debian/Ubuntu, Fedora, or Arch Linux if your
+distribution is detected. GICT never runs that command for you, and
+installing the distribution's package is not guaranteed to provide the
+exact `ifuse` 1.2.1 version GICT requires; use Recheck on that screen to
+confirm after installing. You're always free to use local-directory mode
+without doing any of this.
 
 ### Non-interactive mode (scripting)
 

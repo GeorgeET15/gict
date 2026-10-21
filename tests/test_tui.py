@@ -11,12 +11,15 @@ from gict.devices import DeviceInfo
 from gict.screens import (
     AboutScreen,
     ConfirmScreen,
+    DependencyCheck,
+    DetailedInstructionsScreen,
     DeviceDiscoveryScreen,
     HomeScreen,
     LocalBackupFormScreen,
     PreviousBackupsScreen,
     ProgressScreen,
     ResultsScreen,
+    SetupScreen,
 )
 from gict.tui import GictApp
 
@@ -77,8 +80,13 @@ class HomeScreenTests(unittest.IsolatedAsyncioTestCase):
                 option = menu.get_option(menu.get_option_at_index(0).id)
                 self.assertEqual(option.id, "backup-iphone")
                 self.assertTrue(option.disabled)
+
                 status = app.screen.query_one("#device-status")
-                self.assertIn("unavailable", str(status.render()))
+                for _ in range(20):
+                    await pilot.pause(0.02)
+                    if "checking" not in str(status.render()):
+                        break
+                self.assertIn("setup incomplete", str(status.render()))
 
 
 class DeviceDiscoveryScreenTests(unittest.IsolatedAsyncioTestCase):
@@ -358,6 +366,135 @@ class PreviousBackupsScreenTests(unittest.IsolatedAsyncioTestCase):
                     await pilot.pause()
                     listing = str(app.screen.query_one("#backups-listing").render())
             self.assertIn("No backups found yet", listing)
+
+
+class SetupScreenTests(unittest.IsolatedAsyncioTestCase):
+    async def test_reachable_from_home_menu(self):
+        app = GictApp()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            _select(app, "system-setup")
+            await pilot.press("enter")
+            await pilot.pause()
+            self.assertIsInstance(app.screen, SetupScreen)
+            await pilot.click("#back")
+            await pilot.pause()
+            self.assertIsInstance(app.screen, HomeScreen)
+
+    async def test_shows_every_mocked_dependency_status(self):
+        checks = [
+            DependencyCheck("Linux operating system", "available", "Linux detected"),
+            DependencyCheck("ifuse", "incompatible", "found 1.2.2, need 1.2.1"),
+            DependencyCheck("idevice_id", "missing", "not found"),
+            DependencyCheck("mountpoint", "unknown", "could not determine"),
+        ]
+        with patch("gict.screens.check_iphone_dependencies", return_value=checks):
+            with patch("gict.screens.overall_status", return_value="Setup incomplete"):
+                app = GictApp()
+                async with app.run_test() as pilot:
+                    await pilot.pause()
+                    app.push_screen(SetupScreen())
+                    await pilot.pause(0.1)
+                    text = str(app.screen.query_one("#setup-checks").render())
+
+        self.assertIn("OK - Linux operating system", text)
+        self.assertIn("INCOMPATIBLE - ifuse", text)
+        self.assertIn("MISSING - idevice_id", text)
+        self.assertIn("UNKNOWN - mountpoint", text)
+
+    async def test_install_command_shown_and_copy_enabled_only_when_incomplete(self):
+        incomplete = [DependencyCheck("ifuse", "missing", "not found")]
+        with patch("gict.screens.check_iphone_dependencies", return_value=incomplete):
+            with patch("gict.screens.detect_distro", return_value="debian"):
+                app = GictApp()
+                async with app.run_test() as pilot:
+                    await pilot.pause()
+                    app.push_screen(SetupScreen())
+                    await pilot.pause(0.1)
+                    install_text = str(app.screen.query_one("#setup-install").render())
+                    self.assertIn("apt install", install_text)
+                    self.assertIn("not a guaranteed package name", install_text)
+                    self.assertFalse(app.screen.query_one("#copy-command", Button).disabled)
+
+    async def test_copy_command_disabled_and_no_install_text_when_ready(self):
+        ready = [DependencyCheck("ifuse", "available", "ifuse 1.2.1")]
+        with patch("gict.screens.check_iphone_dependencies", return_value=ready):
+            app = GictApp()
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                app.push_screen(SetupScreen())
+                await pilot.pause(0.1)
+                self.assertTrue(app.screen.query_one("#copy-command", Button).disabled)
+                install_text = str(app.screen.query_one("#setup-install").render())
+                self.assertEqual(install_text.strip(), "")
+
+    async def test_recheck_button_reruns_the_dependency_check(self):
+        ready = [DependencyCheck("ifuse", "available", "ifuse 1.2.1")]
+        with patch(
+            "gict.screens.check_iphone_dependencies", return_value=ready
+        ) as checker:
+            app = GictApp()
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                app.push_screen(SetupScreen())
+                await pilot.pause(0.1)
+                # Home screen's own status check also calls the mocked
+                # function once, so only assert the delta from Recheck.
+                baseline = checker.call_count
+                await pilot.click("#recheck")
+                await pilot.pause(0.1)
+                self.assertEqual(checker.call_count, baseline + 1)
+
+    async def test_view_detailed_instructions_lists_all_distros(self):
+        app = GictApp()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.push_screen(SetupScreen())
+            await pilot.pause(0.1)
+            await pilot.click("#view-details")
+            await pilot.pause()
+            self.assertIsInstance(app.screen, DetailedInstructionsScreen)
+            text = str(app.screen.query_one("#detailed-instructions-text").render())
+            self.assertIn("apt install", text)
+            self.assertIn("dnf install", text)
+            self.assertIn("pacman -S", text)
+            await pilot.click("#back")
+            await pilot.pause()
+            self.assertIsInstance(app.screen, SetupScreen)
+
+    async def test_missing_iphone_dependencies_do_not_block_local_backup(self):
+        missing = [
+            DependencyCheck("ifuse", "missing", "not found"),
+            DependencyCheck("idevice_id", "missing", "not found"),
+        ]
+        with tempfile.TemporaryDirectory() as temp:
+            with patch("gict.screens.check_iphone_dependencies", return_value=missing):
+                app = GictApp()
+                async with app.run_test() as pilot:
+                    await pilot.pause(0.1)
+                    _select(app, "backup-local")
+                    await pilot.press("enter")
+                    await pilot.pause()
+                    self.assertIsInstance(app.screen, LocalBackupFormScreen)
+
+                    app.screen.query_one("#source-input", Input).value = temp
+                    await pilot.click("#continue")
+                    await pilot.pause()
+                    self.assertIsInstance(app.screen, ConfirmScreen)
+
+    async def test_non_linux_platform_shows_clear_status_without_crashing(self):
+        with patch("sys.platform", "darwin"):
+            app = GictApp()
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                app.push_screen(SetupScreen())
+                for _ in range(20):
+                    await pilot.pause(0.02)
+                    text = str(app.screen.query_one("#setup-checks").render())
+                    if "checking" not in text.lower() and text.strip():
+                        break
+                self.assertIn("incompatible", text.lower())
+                self.assertIn("darwin", text.lower())
 
 
 if __name__ == "__main__":
