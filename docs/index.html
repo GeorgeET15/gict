@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GICT — George's iPhone Copy Tool</title>
+  <title>GICT - George's iPhone Copy Tool</title>
   <meta name="description" content="A straightforward Linux tool to copy, verify, and organize your iPhone photos and videos into timestamped backups." />
   <meta name="theme-color" content="#0b0f0d" />
 
-  <meta property="og:title" content="GICT — George's iPhone Copy Tool" />
+  <meta property="og:title" content="GICT - George's iPhone Copy Tool" />
   <meta property="og:description" content="A straightforward way to copy, verify, and organize your iPhone photos and videos into timestamped backups." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://georgeet15.github.io/gict-portable/" />
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="GICT — George's iPhone Copy Tool" />
+  <meta name="twitter:title" content="GICT - George's iPhone Copy Tool" />
   <meta name="twitter:description" content="A straightforward way to copy, verify, and organize your iPhone photos and videos into timestamped backups." />
 
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
@@ -59,7 +59,7 @@
     <section class="hero" id="top" aria-labelledby="hero-heading">
       <div class="wrap hero-inner">
         <div class="hero-copy">
-          <p class="eyebrow">GICT — George's iPhone Copy Tool</p>
+          <p class="eyebrow">GICT - George's iPhone Copy Tool</p>
           <h1 id="hero-heading">Your iPhone media.<br />Your machine.</h1>
           <p class="hero-sub">
             A straightforward way to copy, verify, and organize your iPhone
@@ -83,7 +83,7 @@
         </div>
 
         <div class="hero-terminal" aria-label="Illustrative example backup output">
-          <p class="terminal-label">Example output — illustrative only, not a live backup</p>
+          <p class="terminal-label">Example output - illustrative only, not a live backup</p>
           <pre class="terminal" tabindex="0"><code><span class="t-prompt">$</span> gict --device-id 00008030-ABCDEF123456 --backup-root ~/GICT_Backups
 
 Connected: iPhone (00008030-ABCDEF123456)
@@ -99,7 +99,7 @@ Verifying  IMG_0932.MOV     sha256        <span class="t-ok">ok</span>
 Verifying  IMG_0945.HEIC    sha256        <span class="t-err">failed</span>
 
 1,481 files copied and verified
-1 file failed verification — see report.json
+1 file failed verification - see report.json
 
 Snapshot: ~/GICT_Backups/iPhone/2026-10-21_103000/
 Status: <span class="t-err">INCOMPLETE</span> (1 verification failure)</code></pre>
@@ -112,7 +112,7 @@ Status: <span class="t-err">INCOMPLETE</span> (1 verification failure)</code></p
       <div class="wrap">
         <h2 id="features-heading">What it actually does</h2>
         <p class="section-sub">
-          No exaggerated claims — just what the code does today.
+          No exaggerated claims - just what the code does today.
         </p>
 
         <ul class="feature-grid">
@@ -126,7 +126,7 @@ Status: <span class="t-err">INCOMPLETE</span> (1 verification failure)</code></p
           </li>
           <li class="feature-card">
             <h3>Backup reports</h3>
-            <p>Every snapshot gets a <code>report.json</code> and a status marker — <code>COMPLETE</code> or <code>INCOMPLETE</code> — so you always know what happened.</p>
+            <p>Every snapshot gets a <code>report.json</code> and a status marker - <code>COMPLETE</code> or <code>INCOMPLETE</code> - so you always know what happened.</p>
           </li>
           <li class="feature-card">
             <h3>Local-directory mode</h3>
@@ -134,7 +134,7 @@ Status: <span class="t-err">INCOMPLETE</span> (1 verification failure)</code></p
           </li>
           <li class="feature-card">
             <h3>Interactive terminal UI</h3>
-            <p>Run <code>gict</code> with no arguments for a guided, keyboard-driven interface — or use flags to script it.</p>
+            <p>Run <code>gict</code> with no arguments for a guided, keyboard-driven interface - or use flags to script it.</p>
           </li>
           <li class="feature-card">
             <h3>Guided dependency setup</h3>
@@ -196,7 +196,7 @@ Status: <span class="t-err">INCOMPLETE</span> (1 verification failure)</code></p
 
           <div class="qs-card">
             <h3>Local-directory backup</h3>
-            <p>Works anywhere GICT runs — no iPhone or device tools needed.</p>
+            <p>Works anywhere GICT runs - no iPhone or device tools needed.</p>
             <div class="code-block">
               <pre><code>gict --source ./photos --backup-root ~/GICT_Backups</code></pre>
               <button class="copy-btn" type="button" data-copy="gict --source ./photos --backup-root ~/GICT_Backups">Copy</button>
@@ -227,7 +227,7 @@ Status: <span class="t-err">INCOMPLETE</span> (1 verification failure)</code></p
           <h3>Linux requirements for iPhone device mode</h3>
           <ul>
             <li>Python 3.10+</li>
-            <li><code>ifuse</code> — exactly version 1.2.1</li>
+            <li><code>ifuse</code> - exactly version 1.2.1</li>
             <li><code>idevice_id</code> and <code>ideviceinfo</code></li>
             <li><code>mountpoint</code></li>
             <li><code>fusermount3</code> or <code>fusermount</code></li>
@@ -235,7 +235,7 @@ Status: <span class="t-err">INCOMPLETE</span> (1 verification failure)</code></p
           <p>
             Run <code>gict</code>, open <strong>System Setup</strong> from the
             home screen, and it will check each of these individually and
-            show an example install command for your distribution — GICT
+            show an example install command for your distribution - GICT
             never installs anything itself.
           </p>
         </div>
@@ -249,7 +249,7 @@ Status: <span class="t-err">INCOMPLETE</span> (1 verification failure)</code></p
         <div class="safety-grid">
           <div class="safety-card">
             <h3>Runs on your machine</h3>
-            <p>GICT is a local terminal application. This website is documentation only — it does not access your iPhone, your files, or your backups, and it does not perform any backup itself.</p>
+            <p>GICT is a local terminal application. This website is documentation only - it does not access your iPhone, your files, or your backups, and it does not perform any backup itself.</p>
           </div>
           <div class="safety-card">
             <h3>Platform &amp; dependencies</h3>
@@ -257,7 +257,7 @@ Status: <span class="t-err">INCOMPLETE</span> (1 verification failure)</code></p
           </div>
           <div class="safety-card">
             <h3>Verification isn't a backup strategy</h3>
-            <p>SHA-256 verification confirms files copied correctly — it doesn't replace keeping an independent copy of anything you can't afford to lose.</p>
+            <p>SHA-256 verification confirms files copied correctly - it doesn't replace keeping an independent copy of anything you can't afford to lose.</p>
           </div>
         </div>
       </div>
@@ -268,7 +268,7 @@ Status: <span class="t-err">INCOMPLETE</span> (1 verification failure)</code></p
     <div class="wrap footer-inner">
       <div class="footer-brand">
         <span class="brand-mark" aria-hidden="true">&gt;_</span>
-        <span>GICT — George's iPhone Copy Tool</span>
+        <span>GICT - George's iPhone Copy Tool</span>
       </div>
       <nav class="footer-links" aria-label="Footer">
         <a href="https://github.com/GeorgeET15/gict-portable" target="_blank" rel="noopener">Repository</a>
