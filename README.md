@@ -150,10 +150,3 @@ python -m pytest
 ## Limitations
 
 iPhone device access is currently supported only on Linux. Windows support may come later; macOS support is not planned.
-
-## Project homepage
-
-A static project homepage lives under [`docs/`](docs/index.html) and is set
-up for GitHub Pages (`main` branch, `/docs` folder). It documents the tool
-but doesn't access any device or perform backups itself. Enable it under
-the repository's Settings > Pages if it isn't already.
