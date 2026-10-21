@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GICT — George's iPhone Copy Tool</title>
+  <meta name="description" content="A straightforward Linux tool to copy, verify, and organize your iPhone photos and videos into timestamped backups." />
+  <meta name="theme-color" content="#0b0f0d" />
+
+  <meta property="og:title" content="GICT — George's iPhone Copy Tool" />
+  <meta property="og:description" content="A straightforward way to copy, verify, and organize your iPhone photos and videos into timestamped backups." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://georgeet15.github.io/gict-portable/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="GICT — George's iPhone Copy Tool" />
+  <meta name="twitter:description" content="A straightforward way to copy, verify, and organize your iPhone photos and videos into timestamped backups." />
+
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="#top">
+        <span class="brand-mark" aria-hidden="true">&gt;_</span>
+        <span class="brand-name">GICT</span>
+      </a>
+
+      <button
+        class="nav-toggle"
+        id="nav-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="primary-nav"
+      >
+        <span class="sr-only">Menu</span>
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
+
+      <nav id="primary-nav" class="primary-nav" aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#quick-start">Quick start</a>
+        <a href="#safety">Requirements &amp; safety</a>
+        <a
+          class="nav-github"
+          href="https://github.com/GeorgeET15/gict-portable"
+          target="_blank"
+          rel="noopener"
+        >GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- Hero -->
+    <section class="hero" id="top" aria-labelledby="hero-heading">
+      <div class="wrap hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow">GICT — George's iPhone Copy Tool</p>
+          <h1 id="hero-heading">Your iPhone media.<br />Your machine.</h1>
+          <p class="hero-sub">
+            A straightforward way to copy, verify, and organize your iPhone
+            photos and videos into timestamped backups.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#quick-start">Get started</a>
+            <a
+              class="btn btn-secondary"
+              href="https://github.com/GeorgeET15/gict-portable"
+              target="_blank"
+              rel="noopener"
+            >
+              View source on GitHub
+            </a>
+          </div>
+          <p class="hero-note">
+            Linux terminal app &middot; local-first &middot; SHA-256
+            verified &middot; MIT licensed
+          </p>
+        </div>
+
+        <div class="hero-terminal" aria-label="Illustrative example backup output">
+          <p class="terminal-label">Example output — illustrative only, not a live backup</p>
+          <pre class="terminal" tabindex="0"><code><span class="t-prompt">$</span> gict --device-id 00008030-ABCDEF123456 --backup-root ~/GICT_Backups
+
+Connected: iPhone (00008030-ABCDEF123456)
+Mounting device...                        <span class="t-ok">done</span>
+Scanning DCIM...                          <span class="t-ok">1,482 files found</span>
+
+Copying    IMG_0931.HEIC                  <span class="t-ok">done</span>
+Copying    IMG_0932.MOV                   <span class="t-ok">done</span>
+Copying    IMG_0945.HEIC                  <span class="t-ok">done</span>
+...
+Verifying  IMG_0931.HEIC    sha256        <span class="t-ok">ok</span>
+Verifying  IMG_0932.MOV     sha256        <span class="t-ok">ok</span>
+Verifying  IMG_0945.HEIC    sha256        <span class="t-err">failed</span>
+
+1,481 files copied and verified
+1 file failed verification — see report.json
+
+Snapshot: ~/GICT_Backups/iPhone/2026-10-21_103000/
+Status: <span class="t-err">INCOMPLETE</span> (1 verification failure)</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="section section-light" id="features" aria-labelledby="features-heading">
+      <div class="wrap">
+        <h2 id="features-heading">What it actually does</h2>
+        <p class="section-sub">
+          No exaggerated claims — just what the code does today.
+        </p>
+
+        <ul class="feature-grid">
+          <li class="feature-card">
+            <h3>SHA-256 verification</h3>
+            <p>Every copied file is hashed and verified against the source before it counts as backed up.</p>
+          </li>
+          <li class="feature-card">
+            <h3>Timestamped snapshots</h3>
+            <p>Each run creates its own dated snapshot directory, so backups never silently overwrite each other.</p>
+          </li>
+          <li class="feature-card">
+            <h3>Backup reports</h3>
+            <p>Every snapshot gets a <code>report.json</code> and a status marker — <code>COMPLETE</code> or <code>INCOMPLETE</code> — so you always know what happened.</p>
+          </li>
+          <li class="feature-card">
+            <h3>Local-directory mode</h3>
+            <p>Back up any local folder the same verified way, with no iPhone or device tools required.</p>
+          </li>
+          <li class="feature-card">
+            <h3>Interactive terminal UI</h3>
+            <p>Run <code>gict</code> with no arguments for a guided, keyboard-driven interface — or use flags to script it.</p>
+          </li>
+          <li class="feature-card">
+            <h3>Guided dependency setup</h3>
+            <p>A built-in System Setup screen checks each iPhone-access requirement individually and shows example install commands.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="section section-alt" id="how-it-works" aria-labelledby="how-heading">
+      <div class="wrap">
+        <h2 id="how-heading">How it works</h2>
+        <ol class="steps">
+          <li>
+            <span class="step-index">1</span>
+            <div>
+              <h3>Connect, or choose a folder</h3>
+              <p>Connect and trust your iPhone over USB, or point GICT at a local directory you want backed up.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-index">2</span>
+            <div>
+              <h3>Pick a destination and confirm</h3>
+              <p>Choose where the backup goes and review it on a confirmation screen. Nothing is mounted, copied, or overwritten until you confirm.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-index">3</span>
+            <div>
+              <h3>Copy, verify, review</h3>
+              <p>Files are copied into a timestamped snapshot, every file is SHA-256 verified, and a report tells you exactly what succeeded or failed.</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Quick start -->
+    <section class="section section-light" id="quick-start" aria-labelledby="quick-start-heading">
+      <div class="wrap">
+        <h2 id="quick-start-heading">Quick start</h2>
+
+        <div class="quick-start-grid">
+          <div class="qs-card">
+            <h3>Install</h3>
+            <p>Using <a href="https://pipx.pypa.io/" target="_blank" rel="noopener">pipx</a>:</p>
+            <div class="code-block">
+              <pre><code>pipx install git+https://github.com/GeorgeET15/gict-portable.git</code></pre>
+              <button class="copy-btn" type="button" data-copy="pipx install git+https://github.com/GeorgeET15/gict-portable.git">Copy</button>
+            </div>
+            <p>Check it installed:</p>
+            <div class="code-block">
+              <pre><code>gict --version</code></pre>
+              <button class="copy-btn" type="button" data-copy="gict --version">Copy</button>
+            </div>
+          </div>
+
+          <div class="qs-card">
+            <h3>Local-directory backup</h3>
+            <p>Works anywhere GICT runs — no iPhone or device tools needed.</p>
+            <div class="code-block">
+              <pre><code>gict --source ./photos --backup-root ~/GICT_Backups</code></pre>
+              <button class="copy-btn" type="button" data-copy="gict --source ./photos --backup-root ~/GICT_Backups">Copy</button>
+            </div>
+            <p>Or run <code>gict</code> with no arguments and choose "Back up a local directory" in the interactive interface.</p>
+          </div>
+
+          <div class="qs-card">
+            <h3>iPhone backup (Linux only)</h3>
+            <p>Unlock and connect your iPhone over USB, then trust the computer when prompted.</p>
+            <div class="code-block">
+              <pre><code>gict --list-devices</code></pre>
+              <button class="copy-btn" type="button" data-copy="gict --list-devices">Copy</button>
+            </div>
+            <div class="code-block">
+              <pre><code>gict --device-id DEVICE_ID --backup-root ~/GICT_Backups</code></pre>
+              <button class="copy-btn" type="button" data-copy="gict --device-id DEVICE_ID --backup-root ~/GICT_Backups">Copy</button>
+            </div>
+            <p class="fine-print">
+              iPhone device access is Linux-only; it is not supported on
+              macOS or Windows. Local-directory mode doesn't need any of
+              this.
+            </p>
+          </div>
+        </div>
+
+        <div class="requirements-box">
+          <h3>Linux requirements for iPhone device mode</h3>
+          <ul>
+            <li>Python 3.10+</li>
+            <li><code>ifuse</code> — exactly version 1.2.1</li>
+            <li><code>idevice_id</code> and <code>ideviceinfo</code></li>
+            <li><code>mountpoint</code></li>
+            <li><code>fusermount3</code> or <code>fusermount</code></li>
+          </ul>
+          <p>
+            Run <code>gict</code>, open <strong>System Setup</strong> from the
+            home screen, and it will check each of these individually and
+            show an example install command for your distribution — GICT
+            never installs anything itself.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Requirements & safety -->
+    <section class="section section-alt" id="safety" aria-labelledby="safety-heading">
+      <div class="wrap">
+        <h2 id="safety-heading">Requirements &amp; safety</h2>
+        <div class="safety-grid">
+          <div class="safety-card">
+            <h3>Runs on your machine</h3>
+            <p>GICT is a local terminal application. This website is documentation only — it does not access your iPhone, your files, or your backups, and it does not perform any backup itself.</p>
+          </div>
+          <div class="safety-card">
+            <h3>Platform &amp; dependencies</h3>
+            <p>iPhone device mode requires Linux and the exact dependency versions listed above. Local-directory mode has no device dependencies.</p>
+          </div>
+          <div class="safety-card">
+            <h3>Verification isn't a backup strategy</h3>
+            <p>SHA-256 verification confirms files copied correctly — it doesn't replace keeping an independent copy of anything you can't afford to lose.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <span class="brand-mark" aria-hidden="true">&gt;_</span>
+        <span>GICT — George's iPhone Copy Tool</span>
+      </div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="https://github.com/GeorgeET15/gict-portable" target="_blank" rel="noopener">Repository</a>
+        <a href="https://github.com/GeorgeET15/gict-portable/issues" target="_blank" rel="noopener">Issues</a>
+        <a href="https://github.com/GeorgeET15/gict-portable/blob/main/LICENSE" target="_blank" rel="noopener">License (MIT)</a>
+        <a href="https://github.com/GeorgeET15/gict-portable#readme" target="_blank" rel="noopener">README &amp; docs</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
