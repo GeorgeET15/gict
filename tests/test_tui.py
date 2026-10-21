@@ -250,6 +250,7 @@ class ProgressAndResultsTests(unittest.IsolatedAsyncioTestCase):
                     await pilot.pause(0.05)
                     if isinstance(app.screen, ResultsScreen):
                         break
+                await pilot.pause()
 
                 self.assertIsInstance(app.screen, ResultsScreen)
                 summary = str(app.screen.query_one("#results-summary").render())
@@ -288,6 +289,7 @@ class CancellationTests(unittest.IsolatedAsyncioTestCase):
                     await pilot.pause(0.05)
                     if isinstance(app.screen, ResultsScreen):
                         break
+                await pilot.pause()
 
                 self.assertIsInstance(app.screen, ResultsScreen)
                 self.assertEqual(app.screen.result["status"], "INCOMPLETE")
@@ -307,6 +309,7 @@ class CancellationTests(unittest.IsolatedAsyncioTestCase):
                     await pilot.pause(0.05)
                     if isinstance(app.screen, ResultsScreen):
                         break
+                await pilot.pause()
 
                 self.assertIsInstance(app.screen, ResultsScreen)
                 self.assertEqual(app.screen.result["status"], "INCOMPLETE")
